@@ -3,3 +3,5 @@ credentials/
 venv/
 __pycache__/
 *.pickle
+.agents/
+.claude/
