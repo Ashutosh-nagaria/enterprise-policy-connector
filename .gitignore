@@ -5,5 +5,4 @@ __pycache__/
 *.pickle
 .agents/
 .claude/
-data/chroma_store/
 data/query_log.txt
