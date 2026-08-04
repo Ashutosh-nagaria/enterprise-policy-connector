@@ -32,6 +32,36 @@ def parse_scope(scope_str):
             parts[key.strip()] = val.strip()
     return parts
 
+def split_by_role_section(text):
+    """
+    Finds the Associates/Senior/Executive headings in the document and splits
+    the text into labeled blocks. Anything before the first heading (Purpose,
+    contacts, etc) is returned with role=None, meaning 'use the document's
+    own SCOPE tag' instead of a section-specific one.
+    """
+    role_headers = [
+        ('Associate', 'Associates ('),
+        ('Senior', 'Senior ('),
+        ('Executive', 'Executive ('),
+    ]
+    markers = []
+    for role, heading in role_headers:
+        idx = text.find(heading)
+        if idx != -1:
+            markers.append((idx, role))
+    markers.sort()
+
+    if not markers:
+        return [(None, text)]  # no role sections found, whole doc uses SCOPE's tag
+
+    sections = []
+    if markers[0][0] > 0:
+        sections.append((None, text[:markers[0][0]]))  # preamble before first heading
+    for i, (idx, role) in enumerate(markers):
+        end = markers[i + 1][0] if i + 1 < len(markers) else len(text)
+        sections.append((role, text[idx:end]))
+    return sections
+
 def run():
     print("Step 1: Pulling documents from Drive...")
     creds = authenticate()
@@ -45,17 +75,25 @@ def run():
             text = get_file_text(service, f['id'], f['mimeType'])
             scope = extract_scope(text)
             scope_parts = parse_scope(scope)
-            pieces = chunk_text(text)
-            for i, piece in enumerate(pieces):
-                all_chunks.append({
-                    'id': f"{f['id']}_chunk{i}",  # every chunk needs a unique ID
-                    'doc_name': f['name'],
-                    'zone': scope_parts.get('Zone', zone['name']),
-                    'sensitivity': scope_parts.get('Sensitivity', 'Unknown'),
-                    'min_role': scope_parts.get('Min-Role', 'Unknown'),
-                    'chunk_index': i,
-                    'text': piece,
-                })
+            doc_level_role = scope_parts.get('Min-Role', 'Unknown')
+
+            sections = split_by_role_section(text)
+            chunk_counter = 0
+            for section_role, section_text in sections:
+                effective_role = section_role if section_role else doc_level_role
+                pieces = chunk_text(section_text)
+                for piece in pieces:
+                    all_chunks.append({
+                        'id': f"{f['id']}_chunk{chunk_counter}",  # every chunk needs a unique ID
+                        'doc_name': f['name'],
+                        'zone': scope_parts.get('Zone', zone['name']),
+                        'sensitivity': scope_parts.get('Sensitivity', 'Unknown'),
+                        'min_role': effective_role,
+                        'chunk_index': chunk_counter,
+                        'text': piece,
+                    })
+                    chunk_counter += 1
+            print(f"  {f['name']}: {chunk_counter} chunks across {len(sections)} role section(s)")
 
     print(f"Total chunks: {len(all_chunks)}")
 
@@ -67,9 +105,7 @@ def run():
     embeddings = model.encode(texts, show_progress_bar=True)
 
     print("Step 4: Saving everything into Chroma...")
-    # This creates (or opens, if it already exists) a database saved permanently in the data/ folder
     client = chromadb.PersistentClient(path="data/chroma_store")
-    # "get_or_create" means: reuse it if it exists, otherwise make it fresh
     collection = client.get_or_create_collection(name="policybot_docs")
 
     # If we've run this before, clear out old data first so we don't get duplicates
