@@ -2,7 +2,7 @@
 
 **A permission-aware enterprise policy search assistant**, built to demonstrate the core architecture behind AI-native enterprise search products: connectors, chunking, embeddings, permission-scoped retrieval, and LLM-powered synthesis.
 
-Built as a hands-on portfolio project by Ashutosh Nagaria to explore the technical foundations behind roles like Glean's Connectors PM, directly extending real-world experience with ACL-scoped Knowledge Graph systems (People Finder, ServiceNow).
+Built as a hands-on portfolio project by Ashutosh Nagaria to explore the technical foundations behind roles like Glean's Connectors PM, directly extending real-world experience with ACL-scoped enterprise knowledge graph systems.
 
 **🔗 Live demo: [enterprise-policy-connector.streamlit.app](https://enterprise-policy-connector.streamlit.app/)**
 Try it as different personas (dropdown in the app) and watch permission enforcement happen in real time: same question, different access, different answer.
@@ -144,6 +144,6 @@ streamlit run app/query_app.py
 
 ## Background
 
-This project translates PM experience with ACL-scoped Knowledge Graph products (People Finder, ServiceNow) into hands-on, working infrastructure: a real connector, real embeddings, and real permission-aware retrieval, the technical core of AI-native enterprise search platforms.
+This project translates PM experience with ACL-scoped enterprise knowledge graph products into hands-on, working infrastructure: a real connector, real embeddings, and real permission-aware retrieval, the technical core of AI-native enterprise search platforms.
 
 Built with Claude, Google Drive API, ChromaDB, Sentence Transformers, and Streamlit.
