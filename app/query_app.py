@@ -7,11 +7,11 @@ import base64
 import streamlit as st
 import chromadb
 from sentence_transformers import SentenceTransformer
-import anthropic
+from openai import OpenAI
 from dotenv import load_dotenv
 from datetime import datetime
 
-load_dotenv()  # this reads your .env file and makes ANTHROPIC_API_KEY available
+load_dotenv()  # this reads your .env file and makes DEEPSEEK_API_KEY available
 
 # --- Personas, same as Chapter 5 ---
 ROLE_LEVELS = {'Associate': 1, 'Senior': 2, 'Executive': 3}
@@ -63,10 +63,10 @@ def log_query(persona_name, question, allowed_docs, blocked_count):
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         f.write(f"[{timestamp}] {persona_name} asked: \"{question}\" | Shown: {allowed_docs} | Blocked: {blocked_count} chunks\n")
 
-def ask_claude(question, context_chunks):
-    """Sends the question + the permission-filtered chunks to Claude, asks it to answer using only that context."""
-    api_key = os.getenv('ANTHROPIC_API_KEY')
-    client = anthropic.Anthropic(api_key=api_key)
+def ask_llm(question, context_chunks):
+    """Sends the question + the permission-filtered chunks to DeepSeek, asks it to answer using only that context."""
+    api_key = os.getenv('DEEPSEEK_API_KEY')
+    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
     context_text = "\n\n---\n\n".join([f"[Source: {c['doc_name']}]\n{c['text']}" for c in context_chunks])
 
@@ -82,12 +82,12 @@ EMPLOYEE QUESTION: {question}
 
 ANSWER:"""
 
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    response = client.chat.completions.create(
+        model="deepseek-v4-flash",
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}]
     )
-    return response.content[0].text
+    return response.choices[0].message.content
 
 # --- Background image setup ---
 def get_base64_image(path):
@@ -237,7 +237,7 @@ if should_run and question:
         else:
             with st.spinner("Generating answer..."):
                 top_chunks = allowed_chunks[:5]  # don't overload the LLM with too much context
-                answer = ask_claude(question, top_chunks)
+                answer = ask_llm(question, top_chunks)
 
             st.markdown("### Answer")
             st.write(answer)
