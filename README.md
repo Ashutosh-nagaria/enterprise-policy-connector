@@ -34,7 +34,7 @@ Try: *"What is the hotel budget for senior employees?"*, as Pam, then as Oscar. 
 
 ```
 Google Drive  ->  Connector  ->  Chunking  ->  Embeddings  ->  Vector Index  ->  Permission Filter  ->  LLM Synthesis
- (source)         (pull &        (split into    (meaning        (Chroma)         (zone + role           (Claude)
+ (source)         (pull &        (split into    (meaning        (Chroma)         (zone + role           (DeepSeek)
                   normalize)      pieces)         fingerprint)                    check, pre-retrieval)
 ```
 
@@ -56,7 +56,9 @@ All those chunks, their embeddings, and their permission metadata get stored in 
 This is the core idea of the whole project. When a question comes in, the app knows which persona is asking (their zone and role). Before any retrieved chunk is allowed to reach the LLM or the user, it's checked against that persona's access: does the chunk's zone match (or is the persona "Global")? Does the persona's role meet the chunk's minimum role requirement? Chunks that fail either check are dropped, visibly, with a "N results blocked by permission check" indicator in the UI, so the enforcement is demonstrable, not hidden. Permission is enforced before retrieval, not by redacting an answer after the fact, the same pattern real enterprise search governance requires, and a common gap in naive RAG implementations.
 
 ### 6. Synthesis: where the LLM actually comes in
-Only the permission-approved chunks get sent to Claude (Haiku), along with the original question and an instruction to answer using only the provided excerpts and cite the source document. This is the only step in the entire pipeline that uses a paid, hosted LLM, everything upstream (chunking, embedding, indexing, permission filtering) is deterministic code or a small local model. That's a deliberate architectural choice: reserve the expensive, high-reasoning model for the one step that actually needs reasoning, and keep everything else cheap and fast.
+Only the permission-approved chunks get sent to DeepSeek (V4 Flash), along with the original question and an instruction to answer using only the provided excerpts and cite the source document. This is the only step in the entire pipeline that uses a paid, hosted LLM, everything upstream (chunking, embedding, indexing, permission filtering) is deterministic code or a small local model. That's a deliberate architectural choice: reserve the hosted model for the one step that actually needs reasoning, and keep everything else cheap and fast.
+
+*Note: this project originally used Claude (Haiku) for synthesis, and later switched to DeepSeek, which costs a fraction as much per token while performing comparably well on this task. Since synthesis only reads permission-filtered excerpts and answers from them (no deep reasoning required), a cheaper model is a good fit here, a small example of the cost-aware model routing judgment that matters in production AI systems.*
 
 ### 7. Audit Log: governance, not just retrieval
 Every query is logged: who asked, what they asked, what they were shown, and how many results were blocked. This mirrors a real requirement in enterprise search, compliance and security teams need to be able to answer "who accessed what, and when," not just "did the search work."
@@ -119,7 +121,7 @@ pip install -r requirements.txt
 **3. Environment variables**
 Create a `.env` file in the root:
 ```
-ANTHROPIC_API_KEY=your_key_here
+DEEPSEEK_API_KEY=your_key_here
 ```
 
 **4. Build the index**
@@ -146,4 +148,4 @@ streamlit run app/query_app.py
 
 This project translates PM experience with ACL-scoped enterprise knowledge graph products into hands-on, working infrastructure: a real connector, real embeddings, and real permission-aware retrieval, the technical core of AI-native enterprise search platforms.
 
-Built with Claude, Google Drive API, ChromaDB, Sentence Transformers, and Streamlit.
+Built with DeepSeek, Google Drive API, ChromaDB, Sentence Transformers, and Streamlit.
